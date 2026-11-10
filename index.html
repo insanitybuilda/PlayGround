@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#05070b" />
+  <title>Bad Time Simulator — Remaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+  <main id="app" class="intro">
+    <canvas id="world" aria-label="3D Bad Time Simulator game"></canvas>
+    <canvas id="flames" aria-hidden="true"></canvas>
+    <div class="vignette"></div>
+    <div class="noise"></div>
+    <div class="hud">
+      <div class="brand-mark"><span class="brand-dot"></span> UNDERGROUND // ENCOUNTER 01</div>
+      <div class="sound-toggle" id="soundToggle" role="button" tabindex="0" aria-label="Toggle sound"><span class="sound-bars"><i></i><i></i><i></i></span><span id="soundLabel">SOUND OFF</span></div>
+    </div>
+    <section class="title-stack" aria-label="Bad Time Simulator Remaster">
+      <div class="eyebrow">A VERY BAD TIME AWAITS</div>
+      <h1 class="title-main">BAD TIME</h1>
+      <div class="title-sub">SIMULATOR</div>
+      <div class="title-edition">REMASTER</div>
+    </section>
+    <div class="intro-caption"><span class="caption-line"></span><span>THE SKELETON WHO SLEEPS WITH HIS EYES OPEN</span></div>
+    <div class="bottom-meta"><span>PREPARE YOUR SOUL</span><span>© 2025 · LAST CORRIDOR</span></div>
+    <button id="readyButton" class="ready-button" type="button"><span>READY</span><b>→</b></button>
+    <section id="battleHud" class="battle-hud" aria-live="polite">
+      <div class="battle-topline"><div><span class="tiny-label">OPPONENT</span><strong>SANS</strong></div><div class="wave-readout"><span class="tiny-label">WAVE</span><strong id="waveNumber">01</strong></div></div>
+      <div class="boss-bar"><span id="bossHealth"></span></div>
+      <div class="battle-status"><span id="battleMessage">DON'T MOVE. JUST KIDDING.</span><span class="turn-clock" id="turnClock">00:18</span></div>
+      <div class="arena-frame"><div class="arena-glow"></div><div class="soul" id="soul">♥</div></div>
+      <div class="player-stats"><div class="player-name">HUMAN <span>LV 1</span></div><div class="hp-track"><span id="playerHealth"></span></div><div class="hp-numbers"><b id="hpValue">20</b><span>/ 20 HP</span></div></div>
+      <div class="battle-actions"><button class="action-button active" data-action="FIGHT"><span class="action-icon">⚔</span>FIGHT</button><button class="action-button" data-action="ACT"><span class="action-icon">✧</span>ACT</button><button class="action-button" data-action="ITEM"><span class="action-icon">▣</span>ITEM</button><button class="action-button" data-action="MERCY"><span class="action-icon">◇</span>MERCY</button></div>
+      <div class="touch-hint">MOVE WITH <kbd>WASD</kbd> / <kbd>← ↑ ↓ →</kbd> OR DRAG YOUR SOUL</div>
+      <button id="restartButton" class="restart-button" type="button">RETRY ENCOUNTER</button>
+    </section>
+    <div id="toast" class="toast" role="status"></div>
+    <div id="screenFlash" class="screen-flash"></div>
+  </main>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
