@@ -5,9 +5,10 @@ const world = document.querySelector('#world');
 const flameCanvas = document.querySelector('#flames');
 const flameCtx = flameCanvas.getContext('2d');
 const readyButton = document.querySelector('#readyButton');
-const battleHud = document.querySelector('#battleHud');
-const arena = document.querySelector('.arena-frame');
-const soulEl = document.querySelector('#soul');
+const blackout = document.querySelector('#blackout');
+const joystick = document.querySelector('#joystick');
+const joystickThumb = document.querySelector('#joystickThumb');
+const jumpButton = document.querySelector('#jumpButton');
 const toast = document.querySelector('#toast');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -19,13 +20,42 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, .1, 100);
-camera.position.set(0, 0, 22);
+const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, .1, 140);
+camera.position.set(0, 0, 11);
 camera.lookAt(0, 0, 0);
 scene.add(new THREE.AmbientLight(0x9eb7c9, 1.5));
 const keyLight = new THREE.DirectionalLight(0xdffaff, 3.5); keyLight.position.set(-5, 7, 9); scene.add(keyLight);
 const rimLight = new THREE.PointLight(0x00dfff, 18, 18); rimLight.position.set(5, 2, 4); scene.add(rimLight);
 const floorGlow = new THREE.PointLight(0x00c5e8, 11, 12); floorGlow.position.set(-4, -5, 3); scene.add(floorGlow);
+const corridorGroup = new THREE.Group(); scene.add(corridorGroup); corridorGroup.visible = false;
+const hallwayLights = new THREE.Group(); scene.add(hallwayLights); hallwayLights.visible = false;
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x202c35, roughness: .48, metalness: .12 });
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x101b23, roughness: .8 });
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x344653, roughness: .5, metalness: .25 });
+const hallwayGlowMat = new THREE.MeshBasicMaterial({ color: 0x62eaff, transparent: true, opacity: .58 });
+const distantDoorMat = new THREE.MeshStandardMaterial({ color: 0x090d12, roughness: .9 });
+const corridorFloor = new THREE.Mesh(new THREE.PlaneGeometry(18, 68), floorMat);
+corridorFloor.rotation.x = -Math.PI / 2; corridorFloor.position.set(0, -2.35, -23); corridorGroup.add(corridorFloor);
+for (const side of [-1, 1]) {
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(.4, 8, 68), wallMat); wall.position.set(side * 7.8, 1.65, -23); corridorGroup.add(wall);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(.14, .3, 68), trimMat); base.position.set(side * 7.53, -2.15, -23); corridorGroup.add(base);
+  const upper = new THREE.Mesh(new THREE.BoxGeometry(.1, .12, 68), trimMat); upper.position.set(side * 7.54, 4.65, -23); corridorGroup.add(upper);
+}
+const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(15.6, 68), new THREE.MeshStandardMaterial({ color: 0x10171c, side: THREE.DoubleSide, roughness: .9 }));
+ceiling.rotation.x = Math.PI / 2; ceiling.position.set(0, 5.65, -23); corridorGroup.add(ceiling);
+for (let i = 0; i < 13; i++) {
+  const z = 5 - i * 4.6;
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(.15, .035, 2.2), hallwayGlowMat); stripe.position.set(0, -2.325, z); corridorGroup.add(stripe);
+  const lightBar = new THREE.Mesh(new THREE.BoxGeometry(1.7, .07, .22), hallwayGlowMat); lightBar.position.set(0, 5.59, z - 1.6); corridorGroup.add(lightBar);
+  const lamp = new THREE.PointLight(0x60dfff, 2.1, 8); lamp.position.set(0, 4.7, z - 1.5); hallwayLights.add(lamp);
+}
+const endWall = new THREE.Mesh(new THREE.BoxGeometry(15.7, 8, .45), wallMat); endWall.position.set(0, 1.6, -57); corridorGroup.add(endWall);
+const door = new THREE.Mesh(new THREE.BoxGeometry(4.6, 6, .24), distantDoorMat); door.position.set(0, .35, -56.72); corridorGroup.add(door);
+const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(5.1, 6.4, .14), trimMat); doorFrame.position.set(0, .35, -56.85); corridorGroup.add(doorFrame);
+const doorFace = new THREE.Mesh(new THREE.BoxGeometry(4.35, 5.8, .12), distantDoorMat); doorFace.position.set(0, .35, -56.55); corridorGroup.add(doorFace);
+const horizonLight = new THREE.PointLight(0x59ddff, 7, 24); horizonLight.position.set(0, 2.6, -52); corridorGroup.add(horizonLight);
+const lineMat = new THREE.MeshBasicMaterial({ color: 0x52d9ef, transparent: true, opacity: .32 });
+for (const x of [-7.3, 7.3]) { const line = new THREE.Mesh(new THREE.BoxGeometry(.025, .02, 58), lineMat); line.position.set(x, -2.13, -23); corridorGroup.add(line); }
 const stars = new THREE.Group(); scene.add(stars);
 const starMaterial = new THREE.MeshBasicMaterial({ color: 0x9befff, transparent: true, opacity: .7 });
 for (let i = 0; i < 110; i++) {
@@ -66,6 +96,8 @@ for (const side of [-1, 1]) {
 }
 // Skull: oversized friendly skull silhouette with sculpted cheeks and jaw.
 const head = new THREE.Group(); head.position.set(0, .83, .05); torso.add(head);
+const skullBack = new THREE.Mesh(new THREE.SphereGeometry(.84, 28, 20), bone); skullBack.position.set(0, .04, -.12); skullBack.scale.set(1, 1, .84); head.add(skullBack);
+for (let i = 0; i < 4; i++) { const tooth = new THREE.Mesh(new THREE.BoxGeometry(.2, .14, .2), bone); tooth.position.set(-.3 + i * .2, -.57, .15); head.add(tooth); }
 ellipsoid(head, bone, [0, 0, 0], [.83, .84, .64], 32);
 ellipsoid(head, bone, [0, -.42, .12], [.59, .39, .53], 28);
 ellipsoid(head, bone, [-.69, -.08, .02], [.22, .28, .38], 20);
@@ -93,12 +125,17 @@ for (let i = 0; i < 16; i++) {
   motes.add(mote);
 }
 const clock = new THREE.Clock();
-let viewWidth = 16, viewHeight = 12, introStart = performance.now(), battleMode = false, battleTime = 0;
+let viewWidth = 16, viewHeight = 12, introStart = performance.now(), corridorMode = false;
 let flameW = 0, flameH = 0, flames = [];
+const keys = new Set();
+const playerSpeed = 4.2;
 function resize() {
   const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false); viewHeight = 12; viewWidth = viewHeight * w / h;
-  camera.left = -viewWidth / 2; camera.right = viewWidth / 2; camera.top = viewHeight / 2; camera.bottom = -viewHeight / 2; camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false); viewWidth = viewHeight * w / h;
+  camera.aspect = w / h;
+  camera.position.set(0, 0, 11);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
   flameW = flameCanvas.width = Math.floor(w * Math.min(devicePixelRatio || 1, 1.5));
   flameH = flameCanvas.height = Math.floor(h * Math.min(devicePixelRatio || 1, 1.5));
   flameCanvas.style.width = `${w}px`; flameCanvas.style.height = `${h}px`;
@@ -123,105 +160,54 @@ function drawFlames(dt) {
   ctx.restore();
 }
 
-// Battle state and friendly input handling.
-let playerHp = 20, bossHp = 100, wave = 1, waveElapsed = 0, globalBattleElapsed = 0, invulnerable = 0, gameOver = false, victory = false;
-let soul = { x: .5, y: .56, vx: 0, vy: 0 }, keys = new Set(), bullets = [], spawnTimer = 0, audioCtx = null;
-const setMessage = (text) => { document.querySelector('#battleMessage').textContent = text; };
-function showToast(text) { toast.textContent = text; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 1550); }
-function updateBars() {
-  document.querySelector('#playerHealth').style.width = `${playerHp / 20 * 100}%`;
-  document.querySelector('#hpValue').textContent = playerHp;
-  document.querySelector('#bossHealth').style.width = `${bossHp}%`;
-  document.querySelector('#waveNumber').textContent = String(wave).padStart(2, '0');
-}
+// Corridor exploration controls and scene transition.
+let audioCtx = null, transitioning = false, corridorReady = false;
+let player = { x: 0, z: 7.5, jump: 0, jumpVelocity: 0, moving: false };
+let joystickPointer = null, joystickVector = { x: 0, y: 0 };
+function showToast(text) { toast.textContent = text; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 1750); }
 function beep(freq = 440, duration = .07, type = 'sine', volume = .045) {
   if (!audioCtx || audioCtx.state !== 'running') return;
-  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-  osc.type = type; osc.frequency.value = freq; gain.gain.setValueAtTime(volume, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + duration);
-  osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
+  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain(); osc.type = type; osc.frequency.value = freq; gain.gain.setValueAtTime(volume, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + duration); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
 }
-function startBattle() {
-  if (battleMode) return;
-  battleMode = true; battleTime = 0; introStart = performance.now(); app.classList.add('battle');
-  battleHud.classList.add('active'); readyButton.classList.remove('show');
-  sans.position.set(0, 3.15, 0); sans.scale.setScalar(.78); sans.rotation.set(0, 0, 0);
-  torso.rotation.set(0, 0, 0); head.rotation.set(0, 0, 0);
-  playerHp = 20; bossHp = 100; wave = 1; waveElapsed = 0; globalBattleElapsed = 0; invulnerable = 0; gameOver = false; victory = false; soul = { x: .5, y: .56, vx: 0, vy: 0 }; bullets.forEach(b => b.el.remove()); bullets = []; spawnTimer = .45; battleHud.classList.remove('over'); updateSoul(); updateBars(); setMessage('DON’T MOVE. JUST KIDDING.');
-  showToast('SURVIVE THE ATTACK. KEEP YOUR SOUL SAFE.'); beep(520, .13, 'triangle', .05);
+async function lockLandscape() {
+  try { if (screen.orientation?.lock) await screen.orientation.lock('landscape'); } catch { /* iOS/browser fullscreen policies may reject orientation lock. */ }
+}
+async function startBattle() {
+  if (transitioning || corridorReady) return;
+  transitioning = true; readyButton.classList.remove('show');
+  blackout.classList.add('cover'); await lockLandscape();
+  await new Promise(resolve => setTimeout(resolve, 1250));
+  app.classList.add('corridor-mode'); corridorMode = true; corridorReady = true;
+  player = { x: 0, z: 7.5, jump: 0, jumpVelocity: 0, moving: false };
+  sans.position.set(0, -.62, -42); sans.scale.setScalar(.9); sans.rotation.set(0, Math.PI, 0); torso.rotation.set(0, 0, 0); head.rotation.set(0, 0, 0);
+  camera.position.set(0, .25, 8); camera.lookAt(0, .15, -20);
+  corridorGroup.visible = true; hallwayLights.visible = true; stars.visible = false; motes.visible = false; floorGlow.intensity = 0;
+  await new Promise(resolve => setTimeout(resolve, 350)); blackout.classList.remove('cover');
+  document.querySelector('#corridorPrompt').textContent = 'WASD / JOYSTICK TO WALK';
+  showToast('THE LAST CORRIDOR. SANS IS WAITING.'); beep(260, .22, 'triangle', .04);
 }
 readyButton.addEventListener('click', startBattle);
-function updateSoul() { soulEl.style.left = `${soul.x * 100}%`; soulEl.style.top = `${soul.y * 100}%`; }
-function spawnBone(opts = {}) {
-  const el = document.createElement('div'); el.className = `projectile ${opts.blue ? 'blue' : ''}`;
-  const horizontal = opts.horizontal ?? Math.random() > .5;
-  el.style.cssText = `position:absolute;z-index:2;width:${horizontal ? 49 : 15}px;height:${horizontal ? 15 : 49}px;border-radius:99px;background:${opts.blue ? '#4ceaff' : 'linear-gradient(90deg,#f6fbff,#d6e0e5)'};box-shadow:0 0 9px ${opts.blue ? 'rgba(44,231,255,.62)' : 'rgba(234,248,255,.28)'};left:${(opts.x ?? (horizontal ? -.1 : Math.random() * .84)) * 100}%;top:${(opts.y ?? (horizontal ? Math.random() * .85 : -.12)) * 100}%;transform:rotate(${opts.angle ?? (horizontal ? 0 : 90)}deg);`;
-  arena.appendChild(el);
-  const b = { el, x: opts.x ?? (horizontal ? -.1 : Math.random() * .84), y: opts.y ?? (horizontal ? Math.random() * .85 : -.12), vx: opts.vx ?? (horizontal ? 0.65 + Math.random() * .32 : (Math.random() - .5) * .1), vy: opts.vy ?? (horizontal ? (Math.random() - .5) * .12 : .72 + Math.random() * .35), horizontal, blue: !!opts.blue, life: 0, damage: 1, w: horizontal ? .09 : .035, h: horizontal ? .035 : .09 };
-  if (opts.left) { b.x = -.12; b.y = Math.max(.1, Math.min(.9, soul.y + (Math.random() - .5) * .36)); b.vx = 1.05 + Math.random() * .4; b.vy = 0; }
-  if (opts.right) { b.x = 1.12; b.y = Math.max(.1, Math.min(.9, soul.y + (Math.random() - .5) * .36)); b.vx = -1.05 - Math.random() * .4; b.vy = 0; }
-  el.style.left = `${b.x * 100}%`; el.style.top = `${b.y * 100}%`;
-  bullets.push(b);
+function setJoystick(event) {
+  const rect = joystick.getBoundingClientRect(), radius = rect.width * .33;
+  const dx = event.clientX - (rect.left + rect.width / 2), dy = event.clientY - (rect.top + rect.height / 2), length = Math.hypot(dx, dy), scale = length > radius ? radius / length : 1;
+  joystickVector = { x: dx * scale / radius, y: dy * scale / radius };
+  joystickThumb.style.transform = `translate(calc(-50% + ${joystickVector.x * radius}px), calc(-50% + ${joystickVector.y * radius}px))`;
 }
-function makeAttack() {
-  const r = Math.random();
-  if (r < .25) {
-    for (let i = 0; i < 3; i++) spawnBone({ left: true, y: .18 + i * .3, blue: wave === 2 && i === 1 });
-  } else if (r < .48) {
-    for (let i = 0; i < 3; i++) spawnBone({ right: true, y: .12 + i * .35, blue: wave === 2 && i === 2 });
-  } else if (r < .73) {
-    const lane = .16 + Math.random() * .68;
-    for (let i = 0; i < 4; i++) spawnBone({ x: .14 + i * .23, y: -.12, horizontal: false, angle: 90, vx: (Math.random() - .5) * .12, vy: .92 + Math.random() * .24, blue: wave === 2 && i % 2 === 0 });
-    if (Math.random() > .45) showToast('BLUE BONES: STAY STILL TO DODGE');
-  } else {
-    for (let i = 0; i < 4; i++) spawnBone({ x: -.12, y: .12 + i * .24, horizontal: true, vx: .8 + Math.random() * .3, vy: 0, blue: wave === 2 && i % 2 === 0 });
-  }
-}
-function endBattle(won) {
-  gameOver = true; victory = won; battleHud.classList.add('over'); bullets.forEach(b => b.el.remove()); bullets = [];
-  setMessage(won ? 'YOU WIN. THE BONES ARE RETIRED.' : 'YOUR SOUL GOT A LITTLE TOO CLOSE.');
-  document.querySelector('#restartButton').textContent = won ? 'PLAY AGAIN' : 'RETRY ENCOUNTER';
-  showToast(won ? 'SPARED… THIS TIME.' : 'THE ENCOUNTER ENDS HERE.'); beep(won ? 720 : 130, .38, won ? 'triangle' : 'sawtooth', .045);
-}
-function damagePlayer() {
-  if (invulnerable > 0 || gameOver) return;
-  playerHp = Math.max(0, playerHp - 1); invulnerable = 1.05; soulEl.classList.remove('hurt'); void soulEl.offsetWidth; soulEl.classList.add('hurt'); document.querySelector('#screenFlash').classList.remove('hit'); void document.querySelector('#screenFlash').offsetWidth; document.querySelector('#screenFlash').classList.add('hit'); updateBars(); beep(180, .1, 'square', .04);
-  if (playerHp <= 0) endBattle(false);
-}
-function advanceWave() {
-  waveElapsed = 0; wave++;
-  if (wave > 2) { bossHp = 0; updateBars(); endBattle(true); return; }
-  bossHp = Math.max(0, bossHp - 35); updateBars();
-  setMessage(wave === 2 ? 'OKAY. NOW THE BLUE ONES HURT.' : 'THAT WASN’T EVEN MY FINAL FORM.');
-  showToast('WAVE 02 — KEEP MOVING'); beep(620, .15, 'triangle', .05);
-  // Brief breathing room between the two patterns.
-  bullets.forEach(b => b.el.remove()); bullets = []; spawnTimer = 1.05;
-}
-function setSoulFromPointer(event) {
-  const r = arena.getBoundingClientRect(); soul.x = Math.max(.045, Math.min(.955, (event.clientX - r.left) / r.width)); soul.y = Math.max(.07, Math.min(.93, (event.clientY - r.top) / r.height)); soul.vx = 0; soul.vy = 0; updateSoul();
-}
-let dragging = false;
-arena.addEventListener('pointerdown', e => { if (!battleMode || gameOver) return; dragging = true; arena.setPointerCapture(e.pointerId); setSoulFromPointer(e); });
-arena.addEventListener('pointermove', e => { if (dragging) setSoulFromPointer(e); });
-arena.addEventListener('pointerup', () => { dragging = false; });
-arena.addEventListener('pointercancel', () => { dragging = false; });
-addEventListener('keydown', e => { const key = e.key.toLowerCase(); if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(key)) e.preventDefault(); keys.add(key); });
+joystick.addEventListener('pointerdown', e => { if (!corridorReady) return; joystickPointer = e.pointerId; joystick.setPointerCapture(e.pointerId); setJoystick(e); });
+joystick.addEventListener('pointermove', e => { if (e.pointerId === joystickPointer) setJoystick(e); });
+function releaseJoystick() { joystickPointer = null; joystickVector = { x: 0, y: 0 }; joystickThumb.style.transform = 'translate(-50%, -50%)'; }
+joystick.addEventListener('pointerup', releaseJoystick); joystick.addEventListener('pointercancel', releaseJoystick);
+function jump() { if (!corridorReady || player.jump > .02) return; player.jumpVelocity = 5.3; beep(360, .09, 'triangle', .025); }
+jumpButton.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+addEventListener('keydown', e => {
+  const key = e.key.toLowerCase(); if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' ','enter'].includes(key)) e.preventDefault();
+  keys.add(key); if (key === ' ' || key === 'arrowup') jump();
+});
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
-document.querySelector('#restartButton').addEventListener('click', startBattle);
-document.querySelectorAll('.action-button').forEach(button => button.addEventListener('click', () => {
-  if (!battleMode || gameOver) return;
-  document.querySelectorAll('.action-button').forEach(b => b.classList.remove('active')); button.classList.add('active');
-  const action = button.dataset.action;
-  if (action === 'FIGHT') { bossHp = Math.max(0, bossHp - 12); updateBars(); setMessage('YOU SWING. SANS DOESN’T LOOK IMPRESSED.'); showToast('A good hit!'); beep(260, .09, 'square', .035); if (bossHp <= 0) endBattle(true); }
-  if (action === 'ACT') { setMessage('YOU TELL SANS A KNOCK-KNOCK JOKE.'); showToast('SANS: “WHO’S THERE?”'); beep(540, .12, 'triangle', .035); }
-  if (action === 'ITEM') { if (playerHp < 20) { playerHp = Math.min(20, playerHp + 5); updateBars(); setMessage('YOU ATE A NICE CREAM. +5 HP'); showToast('HP restored. NICE!'); beep(720, .12, 'sine', .035); } else { setMessage('YOUR HP IS ALREADY FULL.'); showToast('Save that treat for later.'); } }
-  if (action === 'MERCY') { if (bossHp <= 30) endBattle(true); else { setMessage('SANS ISN’T READY TO BE SPARED.'); showToast('WEAR HIM DOWN FIRST.'); } }
-}));
 document.querySelector('#soundToggle').addEventListener('click', () => {
-  const toggle = document.querySelector('#soundToggle');
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  toggle.classList.toggle('on'); document.querySelector('#soundLabel').textContent = toggle.classList.contains('on') ? 'SOUND ON' : 'SOUND OFF';
-  if (!toggle.classList.contains('on')) { audioCtx.suspend(); } else beep(440, .12, 'sine', .03);
+  const toggle = document.querySelector('#soundToggle'); if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume(); toggle.classList.toggle('on'); document.querySelector('#soundLabel').textContent = toggle.classList.contains('on') ? 'SOUND ON' : 'SOUND OFF';
+  if (!toggle.classList.contains('on')) audioCtx.suspend(); else beep(440, .12, 'sine', .03);
 });
 document.querySelector('#soundToggle').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') document.querySelector('#soundToggle').click(); });
 
@@ -230,8 +216,8 @@ function animate() {
   const dt = Math.min(clock.getDelta(), .04), now = performance.now(), elapsed = (now - introStart) / 1000;
   drawFlames(dt);
   stars.rotation.z = Math.sin(now * .00004) * .018;
-  const appear = battleMode ? 1 : THREE.MathUtils.smoothstep(elapsed, 2.7, 4.4);
-  if (!battleMode) {
+  const appear = corridorMode ? 1 : THREE.MathUtils.smoothstep(elapsed, 2.7, 4.4);
+  if (!corridorMode) {
     const targetX = Math.min(viewWidth * .28, 4.6), targetY = -.82;
     sans.position.x = THREE.MathUtils.damp(sans.position.x, targetX, 2.3, dt);
     sans.position.y = THREE.MathUtils.damp(sans.position.y, THREE.MathUtils.lerp(-7.3, targetY, appear), 2.6, dt);
@@ -242,44 +228,38 @@ function animate() {
     torso.position.y = Math.sin(now * .0015) * .045;
     head.rotation.x = Math.sin(now * .0011) * .025;
     readyButton.classList.toggle('show', elapsed > 5.25);
+    const t = now * .001;
+    motes.children.forEach((m, i) => { const d = m.userData; m.position.set(sans.position.x + Math.cos(t * d.speed + d.phase) * d.radius, sans.position.y + Math.sin(t * d.speed * 1.2 + d.phase) * d.radius * .7, .4 + Math.sin(t + i) * .4); });
   } else {
-    sans.position.set(0, 3.15 + Math.sin(now * .0014) * .06, 0); sans.scale.setScalar(.78);
-    head.rotation.x = Math.sin(now * .0014) * .025;
-    sans.rotation.y = Math.sin(now * .00055) * .045;
-    if (!gameOver) updateBattle(dt);
+    updateCorridor(dt, now);
   }
-  const t = now * .001;
-  motes.children.forEach((m, i) => { const d = m.userData; m.position.set(sans.position.x + Math.cos(t * d.speed + d.phase) * d.radius, sans.position.y + Math.sin(t * d.speed * 1.2 + d.phase) * d.radius * .7, .4 + Math.sin(t + i) * .4); });
   aura.material.opacity = .12 + (Math.sin(now * .004) + 1) * .08;
   eyeLight.intensity = 1.8 + (Math.sin(now * .005) + 1) * 1.5;
   renderer.render(scene, camera);
 }
-function updateBattle(dt) {
-  globalBattleElapsed += dt; waveElapsed += dt; invulnerable = Math.max(0, invulnerable - dt);
-  soulEl.style.opacity = invulnerable > 0 && Math.floor(globalBattleElapsed * 13) % 2 === 0 ? '.35' : '1';
-  if (!dragging) {
-    const ax = (keys.has('arrowright') || keys.has('d') ? 1 : 0) - (keys.has('arrowleft') || keys.has('a') ? 1 : 0);
-    const ay = (keys.has('arrowdown') || keys.has('s') ? 1 : 0) - (keys.has('arrowup') || keys.has('w') ? 1 : 0);
-    soul.vx = THREE.MathUtils.damp(soul.vx, ax * .86, 13, dt); soul.vy = THREE.MathUtils.damp(soul.vy, ay * .86, 13, dt);
-    soul.x = Math.max(.045, Math.min(.955, soul.x + soul.vx * dt)); soul.y = Math.max(.07, Math.min(.93, soul.y + soul.vy * dt)); updateSoul();
-  }
-  spawnTimer -= dt;
-  if (spawnTimer <= 0) { makeAttack(); spawnTimer = wave === 1 ? .54 : .4 + Math.random() * .14; }
-  const r = arena.getBoundingClientRect(), soulX = soul.x * r.width, soulY = soul.y * r.height;
-  bullets = bullets.filter(b => {
-    b.life += dt; b.x += b.vx * dt; b.y += b.vy * dt;
-    b.el.style.left = `${b.x * 100}%`; b.el.style.top = `${b.y * 100}%`;
-    const dx = (b.x * r.width - soulX) / r.width, dy = (b.y * r.height - soulY) / r.height;
-    const distance = Math.hypot(dx, dy);
-    // Blue bones only hurt a moving soul; white bones only hurt a still soul.
-    const moving = Math.hypot(soul.vx, soul.vy) > .13;
-    if (distance < .067 && (b.blue ? moving : !b.blue)) damagePlayer();
-    if (b.life > 5 || b.x < -.25 || b.x > 1.25 || b.y < -.25 || b.y > 1.25) { b.el.remove(); return false; }
-    return true;
-  });
-  const remain = Math.max(0, 18 - waveElapsed);
-  document.querySelector('#turnClock').textContent = `00:${String(Math.ceil(remain)).padStart(2, '0')}`;
-  if (waveElapsed >= 18) advanceWave();
+function updateCorridor(dt, now) {
+  const keyboardX = (keys.has('arrowright') || keys.has('d') ? 1 : 0) - (keys.has('arrowleft') || keys.has('a') ? 1 : 0);
+  const keyboardY = (keys.has('arrowdown') || keys.has('s') ? 1 : 0) - (keys.has('arrowup') || keys.has('w') ? 1 : 0);
+  const inputX = keyboardX || joystickVector.x;
+  const inputY = keyboardY || joystickVector.y;
+  const length = Math.hypot(inputX, inputY), normalizer = length > 1 ? 1 / length : 1;
+  player.x = THREE.MathUtils.clamp(player.x + inputX * normalizer * playerSpeed * dt, -5.8, 5.8);
+  player.z = THREE.MathUtils.clamp(player.z + inputY * normalizer * playerSpeed * dt, -50, 7.5);
+  player.moving = Math.hypot(inputX, inputY) > .08;
+
+  player.jump = Math.max(0, player.jump + player.jumpVelocity * dt);
+  player.jumpVelocity -= 12 * dt;
+  if (player.jump === 0 && player.jumpVelocity < 0) player.jumpVelocity = 0;
+
+  const cameraTarget = new THREE.Vector3(player.x, .15 + player.jump, player.z + .55);
+  camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraTarget.x, 8, dt);
+  camera.position.y = THREE.MathUtils.damp(camera.position.y, cameraTarget.y, 8, dt);
+  camera.position.z = THREE.MathUtils.damp(camera.position.z, cameraTarget.z, 8, dt);
+  camera.lookAt(player.x, .15 + player.jump * .8, player.z - 22);
+  sans.position.y = -.62 + Math.sin(now * .0014) * .035;
+  torso.position.y = Math.sin(now * .0014) * .025;
+  head.rotation.x = Math.sin(now * .0014) * .018;
+  document.querySelector('#corridorPrompt').textContent = player.moving ? 'KEEP WALKING. HE IS WAITING.' : 'WASD / JOYSTICK TO WALK';
 }
 
 animate();
